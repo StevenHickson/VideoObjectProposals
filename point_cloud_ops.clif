@@ -1,0 +1,81 @@
+from "point_cloud_ops.h":
+  namespace `point_cloud_ops`:
+    class PCOps:
+      def SetSegmentationOptions(self)
+
+      def GetGroundPlaneFromVector(self, image: list<int>,
+                                   depth: list<float>,
+                                   width: int,
+                                   height: int,
+                                   nChannels: int,
+                                   focal: float,
+                                   inlier_dist: float,
+                                   plane_angle: int,
+                                   method: int,
+                                   plane_selection: int) -> (indices: list<int>)
+
+      def CreatePointCloudFromVector(self, image: list<int>,
+                                     depth: list<float>,
+                                     width: int,
+                                     height: int,
+                                     focal: float) -> (output: list<float>)
+
+      def GetSegmentsFromVector(self, image: list<int>,
+                                depth: list<float>,
+                                width: int,
+                                height: int,
+                                focal: float,
+                                return_color: bool) -> (output: list<int>)
+
+      def GetCutOffInliersFromVector(self, image: list<int>,
+                                     depth: list<float>,
+                                     width: int,
+                                     height: int,
+                                     focal: float,
+                                     height_cut_off: float,
+                                     ground_plane: list<int>,
+                                     above_plane: bool) -> (output: list<int>)
+
+      def GetFilteredCloudFromVector(self, image: list<int>,
+                                     disp: list<float>,
+                                     image_width: int,
+                                     image_height: int,
+                                     disp_width: int,
+                                     disp_height: int,
+                                     focal: float,
+                                     disp_mult: float,
+                                     depth_cut_off: int,
+                                     side_cut_off: int,
+                                     height_cut_off: float,
+                                     inlier_dist: float,
+                                     plane_angle: int) -> (output: list<float>)
+
+      def GenerateInstanceImageFromVector(self, image: list<int>,
+                                          disp: list<float>,
+                                          image_width: int,
+                                          image_height: int,
+                                          disp_width: int,
+                                          disp_height: int,
+                                          focal: float,
+                                          disp_mult: float,
+                                          depth_cut_off: int,
+                                          side_cut_off: int,
+                                          height_cut_off: float,
+                                          inlier_dist: float,
+                                          plane_angle: int,
+                                          return_color: bool) -> (output: list<int>)
+
+      def LoadNPY(self, filename: str) -> (width: int, height: int, output: list<float>)
+
+      def ComputeOpticalFlowFromVector(self, past_image: list<int>,
+                                       current_image: list<int>,
+                                       width: int,
+                                       height: int) -> (flow: list<float>)
+
+      def ComputeOpticalFlow3DFromVector(self, past_image: list<int>,
+                                         past_depth: list<float>,
+                                         current_image: list<int>,
+                                         current_depth: list<float>,
+                                         width: int,
+                                         height: int,
+                                         focal: float) -> (flow: list<float>)
