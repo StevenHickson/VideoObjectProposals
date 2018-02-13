@@ -1,0 +1,26 @@
+from "image_extractor.h":
+  namespace `unsup_clustering`:
+    class ObjectInfo:
+      x_min_: int
+      y_min_: int
+      x_max_: int
+      y_max_: int
+      label_: int
+      instance_: int
+
+    class Extractor:
+      def ExtractInstanceDataFromVector(self, image: list<int>,
+                                        labels: list<int>,
+                                        instances: list<int>,
+                                        width: int, height: int,
+                                        nChannels: int,
+                                        fully_unsup: bool)
+                                        -> (instanceList: list<ObjectInfo>)
+      def CreateDataFromInstancesFromVector(self, input_width: int,
+                                            input_height: int,
+                                            output_width: int,
+                                            output_height: int,
+                                            min_size: int,
+                                            max_aspect_ratio: float,
+                                            instanceList: list<ObjectInfo>)
+                                            -> (croppedList: list<ObjectInfo>)
