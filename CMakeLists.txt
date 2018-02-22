@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 set (CMAKE_CXX_STANDARD 11)
+set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 project(Video_Object_Proposals)
 
 SET_PROPERTY(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
@@ -39,3 +40,6 @@ target_link_libraries (point_cloud_ops conversions ${PCL_LIBRARIES} ${OpenCV_LIB
 
 add_library (image_extractor image_extractor.cpp image_extractor.h city_scape_info.h)
 target_link_libraries (image_extractor conversions ${PCL_LIBRARIES} ${OpenCV_LIBS} ${gflags_lib} ${4D_Segmentation_lib})
+
+add_executable (generate_instances generate_instances.cpp point_cloud_ops.h city_scape_info.h)
+target_link_libraries (generate_instances conversions point_cloud_ops ${PCL_LIBRARIES} ${OpenCV_LIBS} ${gflags_lib} ${4D_Segmentation_lib})
