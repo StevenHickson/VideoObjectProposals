@@ -113,6 +113,13 @@ int main(int argc, char* argv[]) {
   while(getline(in, line)) {
   string disp_name, inst_name, label_name;
   cv::Mat image, disp, instance_img, instance_gray, label_img;
+
+  image = imread(line, CV_LOAD_IMAGE_COLOR);
+  if (image.empty()) {
+      cout << "Error, couldn't load image" << endl;
+      break;
+  }
+
   disp_name = regex_replace(line, regex("png"), "flt");
   if (!ReadFloatImage(disp_name, FLAGS_image_width, FLAGS_image_height, &disp)) {
           printf("Error, couldn't load flt image\n");
