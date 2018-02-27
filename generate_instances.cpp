@@ -100,10 +100,12 @@ bool ReadFloatImage(const string& uid, const int width, const int height,
 
 int main(int argc, char* argv[]) {
 
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   ifstream in(FLAGS_file_list);
   if(!in)
   {
-    cout << "Cannot open file list!" << endl;
+    cout << "Cannot open file list! " << FLAGS_file_list  << endl;
     return 1;
   }
 
