@@ -5,6 +5,9 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+bool ReadFloatImage(const std::string& uid, const int width, const int height,
+                    cv::Mat* image);
+    
 int Clamp(int val, int min, int max);
 
 int BoundValue(const int value, const int min, const int max);

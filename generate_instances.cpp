@@ -72,32 +72,6 @@ void ConvertTo8Bit(const cv::Mat& input_image, cv::Mat* output_image) {
   }
 }
 
-bool ReadFloatImage(const string& uid, const int width, const int height,
-                    cv::Mat* image) {
-  *image = cv::Mat(height, width, CV_32F);
-  streampos size;
-  char *bytes;
-
-  ifstream file (uid, ios::in|ios::binary|ios::ate);
-  if (file.is_open())
-  {
-    size = file.tellg();
-    bytes = new char [size];
-    file.seekg (0, ios::beg);
-    file.read (bytes, size);
-    file.close();
-
-    memcpy(&*image->begin<float>(), bytes,
-           height * width * sizeof(float));
-    delete[] bytes;
-  } else {
-	printf("Error, can't read: %s\n", uid.c_str());
-	return false;
-  }
-
-  return true;
-}
-
 int main(int argc, char* argv[]) {
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);

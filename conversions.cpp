@@ -1,6 +1,10 @@
 #include "conversions.h"
 #include <pcl/ModelCoefficients.h>
 #include <pcl/segmentation/sac_segmentation.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include <fstream>
 
 using cv::Mat;
 using cv::Mat_;
@@ -12,6 +16,33 @@ using pcl::PointIndices;
 using pcl::PointXYZI;
 using pcl::PointXYZRGBA;
 using pcl::SACSegmentation;
+
+using namespace std;
+
+bool ReadFloatImage(const std::string& uid, const int width, const int height, cv::Mat* image) {
+  *image = cv::Mat(height, width, CV_32F);
+  streampos size;
+  char *bytes;
+
+  ifstream file(uid, ios::in|ios::binary|ios::ate);
+  if (file.is_open())
+  {
+    size = file.tellg();
+    bytes = new char [size];
+    file.seekg (0, ios::beg);
+    file.read (bytes, size);
+    file.close();
+
+    memcpy(&*image->begin<float>(), bytes,
+           height * width * sizeof(float));
+    delete[] bytes;
+  } else {
+	printf("Error, can't read: %s\n", uid.c_str());
+	return false;
+  }
+
+  return true;
+}
 
 int Clamp(int val, int min, int max) {
   if (val > max) return max;
