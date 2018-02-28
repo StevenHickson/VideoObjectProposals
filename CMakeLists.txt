@@ -120,3 +120,6 @@ target_link_libraries (image_extractor conversions ${PCL_LIBRARIES} ${OpenCV_LIB
 
 add_executable (generate_instances generate_instances.cpp point_cloud_ops.h city_scape_info.h)
 target_link_libraries (generate_instances conversions point_cloud_ops ${PCL_LIBRARIES} ${OpenCV_LIBS} ${gflags_lib} ${4D_Segmentation_lib})
+
+add_executable (test_point_cloud_ops test_point_cloud_ops.cpp point_cloud_ops.h city_scape_info.h)
+target_link_libraries (test_point_cloud_ops conversions point_cloud_ops ${PCL_LIBRARIES} ${OpenCV_LIBS} ${gflags_lib} ${4D_Segmentation_lib})
