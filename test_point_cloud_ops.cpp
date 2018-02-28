@@ -13,7 +13,9 @@
 #include <gflags/gflags.h>
 #include "point_cloud_ops.h"
 #include "conversions.h"
+#include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/ModelCoefficients.h>
 
 DEFINE_string(filename, "", "The name of the file to parse.");
 
@@ -50,7 +52,7 @@ int main(int argc, char* argv[]) {
 
   string disp_name, inst_name, label_name;
   cv::Mat image, disp, depth;
-  pcl::PointCloud<pcl::PointXYZRGBA> cloud;
+  pcl::PointCloud<pcl::PointXYZRGBA> cloud, output_cloud;
 
   image = imread(FLAGS_filename, CV_LOAD_IMAGE_COLOR);
   if (image.empty()) {
@@ -76,8 +78,22 @@ int main(int argc, char* argv[]) {
   
   // Let's save the point cloud
   pcops.CreatePointCloud(image, depth, &cloud, FLAGS_focal_length);
-  pcl::io::savePLYFileBinary("tmp_cloud.ply", cloud);
+  pcl::io::savePCDFileASCII("tmp_cloud.pcd", cloud);
+  pcl::io::savePLYFileASCII("tmp_cloud.ply", cloud);
   
   // Let's compute the ground plane
+  pcl::PointIndices inliers;
+  pcops.ComputeGroundPlane(cloud, FLAGS_inlier_dist, FLAGS_plane_angle, 0, 0, &inliers);
+  //std::vector<int>::const_iterator pI = inliers.indices.begin();
+  //while(pI != inliers.indices.end()) {
+  //    cout << *pI++ << endl;
+  //}
+  Mat inlier_mat(inliers.indices);
+  output << "inliers" << inlier_mat;
+
+  // Let's trim the cloud
+  pcops.TrimDepth(cloud, inliers, FLAGS_depth_cut_off, FLAGS_side_cut_off, FLAGS_height_cut_off, &output_cloud);
+  pcl::io::savePCDFileASCII("output_cloud.pcd", output_cloud);
+  pcl::io::savePLYFileASCII("output_cloud.ply", output_cloud);
   return 0;
 }
