@@ -51,8 +51,9 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   string disp_name, inst_name, label_name;
-  cv::Mat image, disp, depth;
-  pcl::PointCloud<pcl::PointXYZRGBA> cloud, output_cloud;
+  cv::Mat image, disp, depth, segmented_image;
+  pcl::PointCloud<pcl::PointXYZRGBA> cloud, output_cloud, labels_color;
+  pcl::PointCloud<pcl::PointXYZI> labels;
 
   image = imread(FLAGS_filename, CV_LOAD_IMAGE_COLOR);
   if (image.empty()) {
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]) {
   output << "disp" << disp;
   
   // Let's generate and save the depth image
-  pcops.DisparityToDepth(disp, disp.cols, disp.rows, FLAGS_focal_length, FLAGS_disp_mult, &depth);
+  pcops.DisparityToDepth(disp, image.cols, image.rows, FLAGS_focal_length, FLAGS_disp_mult, &depth);
   output << "depth" << depth;
   
   // Let's save the point cloud
@@ -95,5 +96,12 @@ int main(int argc, char* argv[]) {
   pcops.TrimDepth(cloud, inliers, FLAGS_depth_cut_off, FLAGS_side_cut_off, FLAGS_height_cut_off, &output_cloud);
   pcl::io::savePCDFileASCII("output_cloud.pcd", output_cloud);
   pcl::io::savePLYFileASCII("output_cloud.ply", output_cloud);
+
+
+  // Let's get the segments
+  pcops.GetSegments(output_cloud, &labels, &labels_color);
+  pcl::io::savePLYFileASCII("labels_clould.ply", labels);
+  pcops.GetColoredMatFromCloud(labels_color, &segmented_image);
+  output << "segments" << segmented_image;
   return 0;
 }

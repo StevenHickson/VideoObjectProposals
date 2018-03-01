@@ -237,6 +237,10 @@ void PCOps::CreatePointCloud(const Mat& input_image, const Mat& input_depth,
     std::cout << "cloud cannot be NULL in CreatePointCloud" << std::endl;
     return;
   }
+  if (input_image.cols != input_depth.cols || input_image.rows != input_depth.rows) {
+    std::cout << "Image and depth must have equal dimensons" << std::endl;
+    return;
+  }
   cloud->header.frame_id = "/cityscapes_frame";
   cloud->height = input_image.rows;
   cloud->width = input_image.cols;
