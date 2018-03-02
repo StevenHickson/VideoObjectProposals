@@ -40,6 +40,8 @@ DEFINE_int32(image_width, 512, "The width of the depth image.");
 
 DEFINE_int32(image_height, 256, "The height of the depth image.");
 
+DEFINE_bool(overwrite, false, "Whether to overwrite an already precomputed image.");
+
 using namespace cv;
 using namespace std;
 
@@ -87,7 +89,16 @@ int main(int argc, char* argv[]) {
   while(getline(in, line)) {
   string disp_name, inst_name, label_name;
   cv::Mat image, disp, instance_img, instance_gray, label_img;
+  cout << "Parsing: " << line << endl;
 
+  // Let's check to see if we've already generated this image.
+  inst_name = regex_replace(line, regex("png"), "inst.png");
+  cv::Mat tmp_image = imread(inst_name, CV_LOAD_IMAGE_GRAYSCALE);
+  if(!FLAGS_overwrite && !tmp_image.empty()) {
+    cout << "Instance image already exists!" << endl;
+    continue;
+  }
+  
   image = imread(line, CV_LOAD_IMAGE_COLOR);
   if (image.empty()) {
       cout << "Error, couldn't load image" << endl;
