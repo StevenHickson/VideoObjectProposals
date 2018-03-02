@@ -5,6 +5,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+std::string type2str(const int type);
+
 bool ReadFloatImage(const std::string& uid, const int width, const int height,
                     cv::Mat* image);
     
