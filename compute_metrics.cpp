@@ -26,13 +26,15 @@ using namespace std;
 
 float CalcIoUPerInst(const Mat &inst, const Mat &gt, const int inst_id, const int gt_id) {
   int interCount = 0, unionCount = 0;
-  Mat_<uchar>::const_iterator pG = gt.begin<uchar>();
+  Mat_<unsigned short>::const_iterator pG = gt.begin<unsigned short>();
   Mat_<uchar>::const_iterator pI = inst.begin<uchar>();
-  while(pG != gt.end<uchar>()) {
+  while(pG != gt.end<unsigned short>()) {
     // For every different gt instance, we need to calculate the intersection and union for every instance
-    if(*pG == gt_id && *pI == inst_id)
+    int pGNum = static_cast<int>(*pG);
+    int pINum = static_cast<int>(*pI);
+    if(pGNum == gt_id && pINum == inst_id)
       interCount++;
-    if(*pG == gt_id || *pI == inst_id)
+    if(pGNum == gt_id || pINum == inst_id)
       unionCount++;
     ++pG; ++pI;
   }
@@ -43,10 +45,10 @@ void CalcIoU(const Mat &inst, const Mat &gt, const Mat &label, const float iou_t
   // we need to go through each instance in the gt and check for iou
   std::vector< std::pair<int,int> > gt_inst_considered;
   std::vector<int> gt_considered;
-  Mat_<uchar>::const_iterator pG = gt.begin<uchar>();
+  Mat_<unsigned short>::const_iterator pG = gt.begin<unsigned short>();
   Mat_<uchar>::const_iterator pL = label.begin<uchar>();
   Mat_<uchar>::const_iterator pI = inst.begin<uchar>();
-  while(pG != gt.end<uchar>()) {
+  while(pG != gt.end<unsigned short>()) {
     int pGNum = static_cast<int>(*pG);
     int pINum = static_cast<int>(*pI);
     int pLNum = static_cast<int>(*pL);
@@ -61,7 +63,7 @@ void CalcIoU(const Mat &inst, const Mat &gt, const Mat &label, const float iou_t
         // We haven't considered this pair yet
         gt_inst_considered.push_back(tmp);
         float iou = CalcIoUPerInst(inst, gt, pINum, pGNum);
-        cout << "iou is: " << iou << endl;
+        //cout << "iou is: " << iou << endl;
         if (iou >= iou_thresh) {
           // Incrememnt positive count for label
           //cout << "Incrementing positive label " << pLNum << endl;
@@ -97,7 +99,8 @@ int main(int argc, char* argv[]) {
     string inst_name, gt_name, label_name;
     cv::Mat inst, gt, label;
     inst_name = regex_replace(line, regex("png"), "inst.png");
-    inst = imread(inst_name, CV_LOAD_IMAGE_ANYDEPTH);
+    inst = imread(inst_name, CV_LOAD_IMAGE_GRAYSCALE);
+    //cout << "inst type: " << type2str(inst.type());
     if (inst.empty()) {
       cout << "Error, couldn't load inst: " << inst_name << endl;
       break;
@@ -105,13 +108,15 @@ int main(int argc, char* argv[]) {
     gt_name = regex_replace(line, regex("_leftImg8bit"), "_gtFine_instanceIds");
     gt_name = regex_replace(gt_name, regex("leftImg8bit"), "gtFine");
     gt = imread(gt_name, CV_LOAD_IMAGE_ANYDEPTH);
+    //cout << "gt type: " << type2str(gt.type());
     if (gt.empty()) {
       cout << "Error, couldn't load gt: " << gt_name << endl;
       break;
     }
     label_name = regex_replace(line, regex("_leftImg8bit"), "_gtFine_labelIds");
     label_name = regex_replace(label_name, regex("leftImg8bit"), "gtFine");
-    label = imread(label_name, CV_LOAD_IMAGE_ANYDEPTH);
+    label = imread(label_name, CV_LOAD_IMAGE_GRAYSCALE);
+    //cout << "label type: " << type2str(label.type());
     if (label.empty()) {
       cout << "Error, couldn't load label: " << label_name << endl;
       break;
@@ -120,14 +125,14 @@ int main(int argc, char* argv[]) {
     //Let's calculate the intersection and union for each segment
     CalcIoU(inst, gt, label, FLAGS_iou_thresh, &positiveCountForLabel, &totalCountForLabel);
 
-    // Let's print out the results
-    for(int i = 0; i < 256; i++) {
-      int pC = positiveCountForLabel[i];
-      int tC = totalCountForLabel[i];
-      if(tC > 0) {
-        float recall = static_cast<float>(pC) / static_cast<float>(tC);
-        cout << "Label: " << i << ", Positives: " << pC << ", Total: " << tC << ", Recall: " << recall << endl;
-      }
+  }
+  // Let's print out the results
+  for(int i = 0; i < 256; i++) {
+    int pC = positiveCountForLabel[i];
+    int tC = totalCountForLabel[i];
+    if(tC > 0) {
+      float recall = static_cast<float>(pC) / static_cast<float>(tC);
+      cout << "Label: " << i << ", Positives: " << pC << ", Total: " << tC << ", Recall: " << recall << endl;
     }
   }
   return 0;
