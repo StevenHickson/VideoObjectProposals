@@ -77,8 +77,8 @@ void Extractor::ExtractInstanceData(const Mat& image,
   // because the instances aren't in consecutive order.
   //const uint8* instanceData = instances.pixel_data();
   //const uint8* labelData = labels.pixel_data();
-  cv::Mat_<int>::const_iterator instanceData = instances.begin<int>();
-  cv::Mat_<int>::const_iterator labelData = labels.begin<int>();
+  cv::Mat_<uchar>::const_iterator instanceData = instances.begin<uchar>();
+  cv::Mat_<uchar>::const_iterator labelData = labels.begin<uchar>();
   // Here we loop over the image looking for every available instance id.
   for (int j = 0; j < instances.rows; j++) {
     for (int i = 0; i < instances.cols; i++, labelData++, instanceData++) {
@@ -162,6 +162,7 @@ void Extractor::CreateNegativePatches(const int input_width,
       // We index negatively in the map in order to distinguish the background
       // samples from the foreground samples later.
       (*outputMap)[instanceNum] = newObject;
+      //std::cout << "Negative sample: " << randMinX << "," << randMinY << "," << randSize << std::endl;
     }
   }
 }
@@ -224,6 +225,8 @@ void Extractor::CreateDataFromInstances(
           ObjectInfo(newX, newY, newWidth, newHeight,
                      static_cast<int>(pI->second.label_), pI->first);
       croppedList->push_back(newObject);
+    } else {
+      //std::cout << "Throwing out object with following info: " << newX << "," << newY << "," << newWidth << "," << newHeight << "," << pI->second.label_ << "," << pI->first << std::endl;
     }
     ++pI;
   }
