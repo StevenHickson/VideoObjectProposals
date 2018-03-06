@@ -126,3 +126,6 @@ target_link_libraries (test_point_cloud_ops conversions point_cloud_ops ${PCL_LI
 
 add_executable (compute_metrics compute_metrics.cpp conversions.h city_scape_info.h)
 target_link_libraries (compute_metrics conversions ${PCL_LIBRARIES} ${OpenCV_LIBS} ${gflags_lib} ${4D_Segmentation_lib})
+
+add_executable (generate_proposals generate_proposals.cpp conversions.h city_scape_info.h)
+target_link_libraries (generate_proposals conversions image_extractor point_cloud_ops ${PCL_LIBRARIES} ${OpenCV_LIBS} ${gflags_lib} ${4D_Segmentation_lib})
