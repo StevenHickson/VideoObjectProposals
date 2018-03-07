@@ -108,19 +108,20 @@ float CalcFlowDistance(const Mat& flow, const Rect& roi,
 
 class Generator {
   public:
-    Generator() { };
-    void SaveData(const Mat &img, const Rect &roi, const int label, const int count, const string &filename);
+    Generator() { current_count_ = 0; };
+    void SaveData(const Mat &img, const Rect &roi, const int label, const string &filename);
     void CreateExamplesFromInstances(
                   const Mat& input_image, const Mat& instance_images,
                   const std::map<int, ObjectInfo>& instance_map, const string& filename);
 
     ofstream output_file_;
+    int current_count_;
     Mat flow_;
     Mat background_flow_;
     Extractor extractor_;
 };
 
-void Generator::SaveData(const Mat &img, const Rect &roi, const int label, const int count, const string &filename) {
+void Generator::SaveData(const Mat &img, const Rect &roi, const int label, const string &filename) {
   // Save the image in the proper directory, that is dictated by label
   int save_label;
   if (FLAGS_object_subset == 1) {
@@ -141,7 +142,7 @@ void Generator::SaveData(const Mat &img, const Rect &roi, const int label, const
   else
     folder = "foreground";
   stringstream save_name;
-  save_name << "/data/" << FLAGS_output_folder << "/" << folder << "/" << count << ".png";
+  save_name << "/data/" << FLAGS_output_folder << "/" << folder << "/" << current_count_ << ".png";
   imwrite(save_name.str(), img);
   output_file_ << save_name.str() << "," << filename << "," << label << "," << save_label << ",";
   output_file_ << roi.x << "," << roi.y << "," << roi.width << "," << roi.height << "\n";
@@ -175,7 +176,6 @@ void Generator::CreateExamplesFromInstances(
 
   std::vector<ObjectInfo>::const_iterator pI = croppedInstanceImages.begin();
 
-  int c = 0;
   while (pI != croppedInstanceImages.end()) {
     Rect roi(pI->x_min_, pI->y_min_, pI->x_max_, pI->y_max_);
     if (pI->label_ == 0 || !FLAGS_use_optical_flow ||
@@ -184,9 +184,9 @@ void Generator::CreateExamplesFromInstances(
       Mat cropped_image = input_image(roi).clone();
       Mat cropped_instance_image = instance_images(roi).clone();
 
-      SaveData(cropped_image, roi, pI->label_, c, filename);
+      SaveData(cropped_image, roi, pI->label_, filename);
     }
-    ++pI; ++c;
+    ++pI; ++current_count_;
   }
 }
 
