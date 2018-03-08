@@ -5,15 +5,18 @@ import tensorflow as tf
 from tensorflow.contrib.learn.python.learn.estimators import kmeans
 from tensorflow.python.framework import constant_op
 import sys
+from city_scape_info import TrainIdToName
+from city_scape_info import OriginalIdToName
 
 # Input is the train set, the validation set, # of clusters
 # An example is python test_kmeans.py /data/gt_proposals/embeddings_baseline_train.npy /data/gt_proposals/embeddings_baseline.npy
 
 train_set = np.load(sys.argv[1])
 val_set = np.load(sys.argv[2])
+num_k = int(sys.argv[3])
 
 clusterer = kmeans.KMeansClustering(
-      num_clusters=int(sys.argv[3]),
+      num_clusters=num_k,
       use_mini_batch=False)
 x = train_set
 labels = x[:,0:1]
@@ -48,7 +51,19 @@ predictions = np.array(list(clusterer.predict_cluster_idx(
 cluster_counts = dict()
 for l,p in zip(labels_val.flatten(),predictions):
     if l not in cluster_counts:
-        cluster_counts[l] = [0,0,0]
+        cluster_counts[l] = [0] * num_k
     cluster_counts[l][p] += 1
 
-print(cluster_counts)
+#print(cluster_counts)
+minVal = min(cluster_counts)
+maxVal = max(cluster_counts)
+if minVal < 11 or maxVal > 18:
+    origId = True
+else:
+    origId = False
+for k,v in cluster_counts.iteritems():
+    if origId:
+        print(OriginalIdToName[k] + ': ' + str(v))
+    else:
+        print(TrainIdToName[k] + ': ' + str(v))
+
