@@ -6,14 +6,14 @@ from tensorflow.contrib.learn.python.learn.estimators import kmeans
 from tensorflow.python.framework import constant_op
 import sys
 
-# Input is the train set and the validation set
+# Input is the train set, the validation set, # of clusters
 # An example is python test_kmeans.py /data/gt_proposals/embeddings_baseline_train.npy /data/gt_proposals/embeddings_baseline.npy
 
 train_set = np.load(sys.argv[1])
 val_set = np.load(sys.argv[2])
 
 clusterer = kmeans.KMeansClustering(
-      num_clusters=2,
+      num_clusters=int(sys.argv[3]),
       use_mini_batch=False)
 x = train_set
 labels = x[:,0:1]
