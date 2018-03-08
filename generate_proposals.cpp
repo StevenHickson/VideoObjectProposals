@@ -146,13 +146,14 @@ class Generator {
 void Generator::SaveData(const Mat &img, const Mat &label_image, const Rect &roi, const int label, const string &filename) {
   // Save the image in the proper directory, that is dictated by label
   int save_label;
+  int actual_label = label;
   if (FLAGS_object_subset == 1) {
     save_label = GetTargetSubsetObjectIds(label);
   } else if (FLAGS_object_subset == 0) {
     save_label = GetTargetObjectIds(label);
-  } else if (FLAGS_infer_labels) {
-    save_label = InferLabel(label_image, roi);
   } else {
+    if (FLAGS_infer_labels)
+      actual_label = InferLabel(label_image, roi);
     if (label == 0)
       save_label = 0; 
     else if (label == 1 || label == 255)
@@ -168,7 +169,7 @@ void Generator::SaveData(const Mat &img, const Mat &label_image, const Rect &roi
   stringstream save_name;
   save_name << "/data/" << FLAGS_output_folder << "/" << folder << "/" << current_count_ << ".png";
   imwrite(save_name.str(), img);
-  output_file_ << save_name.str() << "," << filename << "," << label << "," << save_label << ",";
+  output_file_ << save_name.str() << "," << filename << "," << actual_label << "," << save_label << ",";
   output_file_ << roi.x << "," << roi.y << "," << roi.width << "," << roi.height << "\n";
 }
 
