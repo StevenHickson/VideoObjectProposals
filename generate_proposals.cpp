@@ -66,6 +66,8 @@ DEFINE_bool(
 
 DEFINE_double(optical_flow_dist, 10, "The optical flow distance.");
 
+DEFINE_bool(infer_labels, false, "Whether to infer the gt label.");
+
 using namespace cv;
 using namespace std;
 using namespace unsup_clustering;
@@ -106,12 +108,32 @@ float CalcFlowDistance(const Mat& flow, const Rect& roi,
          std::abs(mean[1] - background_flow[1]);
 }
 
+int InferLabel(const Mat &label_img, const Rect &roi) {
+  Mat label_crop = label_img(roi).clone();
+  Mat_<uchar>::const_iterator p = label_crop.begin<uchar>();
+  vector<int> counts(256);
+  while (p != label_crop.end<uchar>()) {
+    counts[*p++]++;
+  }
+  int max = 0, maxLoc = 0;
+  vector<int>::const_iterator pV = counts.begin();
+  int c = 0;
+  while (pV != counts.end()) {
+    if(*pV > max) {
+      max = *pV;
+      maxLoc = c;
+    }
+    ++c; ++pV;
+  }
+  return maxLoc;
+}
+
 class Generator {
   public:
     Generator() { current_count_ = 0; };
-    void SaveData(const Mat &img, const Rect &roi, const int label, const string &filename);
+    void SaveData(const Mat &img, const Mat &label_image, const Rect &roi, const int label, const string &filename);
     void CreateExamplesFromInstances(
-                  const Mat& input_image, const Mat& instance_images,
+                  const Mat& input_image, const Mat& instance_images, const Mat& label_image,
                   const std::map<int, ObjectInfo>& instance_map, const string& filename);
 
     ofstream output_file_;
@@ -121,13 +143,15 @@ class Generator {
     Extractor extractor_;
 };
 
-void Generator::SaveData(const Mat &img, const Rect &roi, const int label, const string &filename) {
+void Generator::SaveData(const Mat &img, const Mat &label_image, const Rect &roi, const int label, const string &filename) {
   // Save the image in the proper directory, that is dictated by label
   int save_label;
   if (FLAGS_object_subset == 1) {
     save_label = GetTargetSubsetObjectIds(label);
   } else if (FLAGS_object_subset == 0) {
     save_label = GetTargetObjectIds(label);
+  } else if (FLAGS_infer_labels) {
+    save_label = InferLabel(label_image, roi);
   } else {
     if (label == 0)
       save_label = 0; 
@@ -150,7 +174,7 @@ void Generator::SaveData(const Mat &img, const Rect &roi, const int label, const
 
 
 void Generator::CreateExamplesFromInstances(
-    const Mat& input_image, const Mat& instance_images,
+    const Mat& input_image, const Mat& instance_images, const Mat& label_image,
     const std::map<int, ObjectInfo>& instance_map, const string& filename) {
 
   std::map<int, ObjectInfo> allInstances;
@@ -184,7 +208,7 @@ void Generator::CreateExamplesFromInstances(
       Mat cropped_image = input_image(roi).clone();
       Mat cropped_instance_image = instance_images(roi).clone();
 
-      SaveData(cropped_image, roi, pI->label_, filename);
+      SaveData(cropped_image, label_image, roi, pI->label_, filename);
     }
     ++pI; ++current_count_;
   }
@@ -207,7 +231,7 @@ int main(int argc, char* argv[]) {
   string line;
   while(getline(in, line)) {
     string disp_name, inst_name, label_name;
-    Mat image, instance_img, label_img;
+    Mat image, instance_img, label_img, gt_label_img;
     cout << "Parsing: " << line << endl;
 
     image = imread(line, CV_LOAD_IMAGE_COLOR);
@@ -242,13 +266,23 @@ int main(int argc, char* argv[]) {
       cout << "Error, couldn't load label" << endl;
       break;
     }
+
+    if (FLAGS_infer_labels) {
+      label_name = regex_replace(line, regex("_leftImg8bit"), "_gtFine_labelIds");
+      label_name = regex_replace(label_name, regex("leftImg8bit"), "gtFine");
+      gt_label_img = imread(label_name, CV_LOAD_IMAGE_GRAYSCALE);
+      if (gt_label_img.empty()) {
+        cout << "Error, couldn't load ground truth label" << endl;
+        break;
+      }
+    }
     
     std::map<int, ObjectInfo> instanceMap;
     bool fully_unsup = false;
     if (FLAGS_object_subset == 2)
       fully_unsup = true;
     gen.extractor_.ExtractInstanceData(image, label_img, instance_img, fully_unsup, &instanceMap);
-    gen.CreateExamplesFromInstances(image, instance_img, instanceMap, line);
+    gen.CreateExamplesFromInstances(image, instance_img, gt_label_img, instanceMap, line);
   }
   gen.output_file_.close();
   return 0;
