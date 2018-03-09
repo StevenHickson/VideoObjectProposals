@@ -151,7 +151,7 @@ def cluster_stats_loss(k_clusters, multiplier=1.0):
           cluster_diff += tf.constant(
               FLAGS.stats_regularization_weight, tf.float32) * tf.cast(
                   tf.abs(cluster_count[i] - cluster_count[i - j]),
-                  tf.float32) / tf.constant(FLAGS.batch_size, tf.float32)
+                  tf.float32) / tf.constant(FLAGS.train_batch_size, tf.float32)
     cluster_diff *= multiplier
     tf.summary.scalar('cluster_diff_loss', cluster_diff)
     slim.losses.add_loss(cluster_diff)
