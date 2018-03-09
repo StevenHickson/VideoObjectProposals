@@ -1149,7 +1149,8 @@ def main(_):
       FLAGS.flip_left_right, FLAGS.random_crop, FLAGS.random_scale,
       FLAGS.random_brightness)
 
-  with tf.Session(graph=graph) as sess:
+  gpu_options = tf.GPUOptions(allow_growth = True)
+  with tf.Session(graph=graph, config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     # Set up the image decoding sub-graph.
     jpeg_data_tensor, decoded_image_tensor = add_jpeg_decoding(
         model_info['input_width'], model_info['input_height'],

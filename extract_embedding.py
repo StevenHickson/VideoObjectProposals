@@ -22,7 +22,8 @@ labels_list = []
 # Creates graph from saved GraphDef.
 create_graph()
 c = 0
-with tf.Session() as sess:
+gpu_options = tf.GPUOptions(allow_growth = True)
+with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     # Some useful tensors:
     # 'softmax:0': A tensor containing the normalized prediction across
     #   1000 labels.
