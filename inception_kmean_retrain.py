@@ -127,7 +127,8 @@ FLAGS = None
 # we're using for Inception v3. These include things like tensor names and their
 # sizes. If you want to adapt this script to work with another model, you will
 # need to update these to reflect the values in the network you're using.
-MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1  # ~134M
+#MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1  # ~134M
+MAX_NUM_IMAGES_PER_CLASS = 17000
 
 def cluster_stats_loss(k_clusters, multiplier=1.0):
   """Calculates a loss based on different sizes of the clusters.
@@ -220,13 +221,14 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
     tf.logging.error("Image directory '" + image_dir + "' not found.")
     return None
   result = {}
-  sub_dirs = [x[0] for x in gfile.Walk(image_dir)]
+  #sub_dirs = [x[0] for x in gfile.Walk(image_dir)]
+  sub_dirs = ['foreground', 'background']
   # The root directory comes first, so skip it.
-  is_root_dir = True
+  #is_root_dir = True
   for sub_dir in sub_dirs:
-    if is_root_dir:
-      is_root_dir = False
-      continue
+    #if is_root_dir:
+    #  is_root_dir = False
+    #  continue
     #extensions = ['jpg', 'jpeg', 'JPG', 'JPEG']
     extensions = ['png', 'PNG']
     file_list = []
@@ -898,6 +900,8 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
       with tf.name_scope('kmeans_losses'):
         #step = slim.variables.get_or_create_global_step()
         step = tf.train.get_or_create_global_step()
+        incr_step = step.assign(step + 1)
+        tf.summary.scalar('step', step)
         step_reached_multiplier = tf.cond(
           step >= FLAGS.kmeans_multiplier_start,
           lambda: tf.constant(FLAGS.kmeans_loss_multiplier),
@@ -928,7 +932,7 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
     optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
     train_step = optimizer.minimize(total_loss)
 
-  return (train_step, total_loss, bottleneck_input, ground_truth_input,
+  return (train_step, incr_step, total_loss, bottleneck_input, ground_truth_input,
           final_tensor)
 
 
@@ -1169,7 +1173,7 @@ def main(_):
                         bottleneck_tensor, FLAGS.architecture)
 
     # Add the new layer that we'll be training.
-    (train_step, cross_entropy, bottleneck_input, ground_truth_input,
+    (train_step, incr_step, cross_entropy, bottleneck_input, ground_truth_input,
      final_tensor) = add_final_training_ops(
          len(image_lists.keys()), FLAGS.final_tensor_name, bottleneck_tensor,
          model_info['bottleneck_tensor_size'], model_info['quantize_layer'])
@@ -1209,8 +1213,8 @@ def main(_):
              FLAGS.architecture)
       # Feed the bottlenecks and ground truth into the graph, and run a training
       # step. Capture training summaries for TensorBoard with the `merged` op.
-      train_summary, _ = sess.run(
-          [merged, train_step],
+      train_summary, _, _ = sess.run(
+          [merged, train_step, incr_step],
           feed_dict={bottleneck_input: train_bottlenecks,
                      ground_truth_input: train_ground_truth})
       train_writer.add_summary(train_summary, i)
