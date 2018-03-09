@@ -845,6 +845,24 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
     ground_truth_input = tf.placeholder(
         tf.int64, [None], name='GroundTruthInput')
 
+  layer_name = 'extra_bottleneck_ops'
+  if FLAGS.extra_bottleneck == True:
+    with tf.name_scope(layer_name):
+      with tf.name_scope('weights'):
+        initial_value = tf.truncated_normal(
+            [bottleneck_tensor_size, bottleneck_tensor_size], stddev=0.001)
+        layer_weights = tf.Variable(initial_value, name='bottleneck_weights')
+
+        variable_summaries(layer_weights)
+      with tf.name_scope('biases'):
+        layer_biases = tf.Variable(tf.zeros([bottleneck_tensor_size]), name='botleneck_biases')
+
+        variable_summaries(layer_biases)
+
+      with tf.name_scope('Wx_plus_b'):
+        bottleneck_input = tf.matmul(bottleneck_input, layer_weights) + layer_biases
+        tf.summary.histogram('pre_activations', bottleneck_input)
+
   # Organizing the following ops as `final_training_ops` so they're easier
   # to see in TensorBoard
   layer_name = 'final_training_ops'
@@ -1503,6 +1521,14 @@ if __name__ == '__main__':
       default=0,
       help="""\
       When to start learning for kmeans.\
+      """
+  )
+  parser.add_argument(
+      '--extra_bottleneck',
+      type=bool,
+      default=False,
+      help="""\
+      Whether to use an extra bottleneck for kmeans.\
       """
   )
   parser.add_argument(
