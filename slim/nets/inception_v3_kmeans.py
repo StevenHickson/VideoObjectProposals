@@ -25,6 +25,48 @@ from nets import inception_utils
 slim = tf.contrib.slim
 trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
 
+def kmeans(x, weights):
+  """Specifies the kmeans objective function.
+
+  Args:
+    x: Input tensor.
+    weights: A tensor of the kmeans weights.
+
+  Returns:
+      The loss from the kmeans objective function and the nearest k neighbors.
+  """
+  weights_trans = tf.transpose(weights)
+  innerprod = tf.matmul(x, weights_trans, transpose_b=True)
+  weights_hsn = tf.reduce_sum(tf.pow(weights_trans, 2), 1) / 2.0
+  x_hsn = tf.reduce_sum(tf.pow(x, 2), 1) / 2.0
+  hsd = (innerprod - tf.expand_dims(weights_hsn, 0))
+  max_hsd, nearest_k = tf.nn.top_k(hsd, 1)
+  min_hsd = (x_hsn - tf.squeeze(max_hsd))
+  return tf.reduce_mean(min_hsd), tf.squeeze(nearest_k)
+
+
+def mult_kmeans(x, weights, mult):
+  """Specifies the kmeans objective function with a multiplier.
+
+  Args:
+    x: Input tensor.
+    weights: A tensor of the kmeans weights.
+    mult: A tensor of multipliers for each input.
+
+  Returns:
+      The loss from the kmeans objective function and the nearest k neighbors.
+  """
+  weights_trans = tf.transpose(weights)
+  x_squeezed = tf.squeeze(x)
+  innerprod = tf.matmul(x_squeezed, weights_trans, transpose_b=True)
+  weights_hsn = tf.reduce_sum(tf.pow(weights_trans, 2), 1) / 2.0
+  x_hsn = tf.reduce_sum(tf.pow(x_squeezed, 2), 1) / 2.0
+  hsd = (innerprod - tf.expand_dims(weights_hsn, 0))
+  max_hsd, nearest_k = tf.nn.top_k(hsd, 1)
+  min_hsd = (x_hsn - tf.squeeze(max_hsd))
+  return tf.reduce_mean(tf.multiply(min_hsd, tf.cast(
+      mult, tf.float32))), tf.squeeze(nearest_k)
+
 
 def inception_v3_base(inputs,
                       final_endpoint='Mixed_7c',
@@ -416,8 +458,8 @@ def inception_v3_base(inputs,
     raise ValueError('Unknown final endpoint %s' % final_endpoint)
 
 
-def inception_v3(inputs,
-                 num_classes=1000,
+def inception_v3_kmeans(inputs,
+                 num_classes=2,
                  is_training=True,
                  dropout_keep_prob=0.8,
                  min_depth=16,
@@ -426,8 +468,10 @@ def inception_v3(inputs,
                  spatial_squeeze=True,
                  reuse=None,
                  create_aux_logits=True,
+                 kmeans_num_k=2,
                  scope='InceptionV3',
-                 global_pool=False):
+                 global_pool=False,
+                 binary_labels=None):
   """Inception model from http://arxiv.org/abs/1512.00567.
 
   "Rethinking the Inception Architecture for Computer Vision"
@@ -541,6 +585,28 @@ def inception_v3(inputs,
         # 1000
       end_points['Logits'] = logits
       end_points['Predictions'] = prediction_fn(logits, scope='Predictions')
+      # kmeans
+      if kmeans_num_k > 0:
+        with tf.name_scope('kmeans') as scope:
+          kmeans_weights = slim.variables.model_variable(
+              'kmeans_weights',
+              shape=[2048, kmeans_num_k],
+              initializer=trunk_normal(0.01),
+              trainable=is_training)
+          # Note: if no binary_gt_labels are provided, we use the estimated
+          # labels here.
+          if binary_labels is None:
+            min_hsd, k_clusters = mult_kmeans(net, kmeans_weights,
+                                              tf.argmax(
+                                                  end_points['Predictions'],
+                                                  axis=1))
+          else:
+            # Here we only generate cluster loss using the binary gt foreground.
+            min_hsd, k_clusters = mult_kmeans(net, kmeans_weights,
+                                              binary_labels)
+          end_points['KMeansWeights'] = kmeans_weights
+          end_points['KClusters'] = k_clusters
+          end_points['KMinHSD'] = min_hsd
   return logits, end_points
 inception_v3.default_image_size = 299
 
