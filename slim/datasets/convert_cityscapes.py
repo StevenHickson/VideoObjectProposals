@@ -29,10 +29,7 @@ import sys
 
 import tensorflow as tf
 
-from datasets import dataset_utils
-
-# The number of images in the validation set.
-_NUM_VALIDATION = 350
+import dataset_utils
 
 # Seed for repeatability.
 _RANDOM_SEED = 0
@@ -40,6 +37,22 @@ _RANDOM_SEED = 0
 # The number of shards per dataset split.
 _NUM_SHARDS = 5
 
+FLAGS = tf.app.flags.FLAGS
+
+tf.app.flags.DEFINE_string(
+    'dataset_dir',
+    None,
+    'The directory where the output TFRecords and temporary files are saved.')
+
+tf.app.flags.DEFINE_string(
+    'train_file',
+    None,
+    'The train file.')
+
+tf.app.flags.DEFINE_string(
+    'val_file',
+    None,
+    'The val file.')
 
 class ImageReader(object):
   """Helper class that provides TensorFlow image coding utilities."""
@@ -61,53 +74,33 @@ class ImageReader(object):
     return image
 
 
-def _get_filenames_and_classes(train_file, test_file):
-  """Returns a list of filenames and inferred class names.
-
-  Args:
-    train_file: a txt file containing the list of training proposals.
-    test_file: a txt file containing the list of testing proposals.
-
-  Returns:
-    A list of image file paths, relative to `dataset_dir` and the list of
-    subdirectories, representing class names.
-  """
-  directories = []
-  class_names = ['background', 'foreground']
-  for filename in os.listdir(flower_root):
-    path = os.path.join(flower_root, filename)
-    if os.path.isdir(path):
-      directories.append(path)
-      class_names.append(filename)
-
-  photo_filenames = []
-  for directory in directories:
-    for filename in os.listdir(directory):
-      path = os.path.join(directory, filename)
-      photo_filenames.append(path)
-
-  return photo_filenames, class_names
-
-
 def _get_dataset_filename(dataset_dir, split_name, shard_id):
   output_filename = 'cityscapes_%s_%05d-of-%05d.tfrecord' % (
       split_name, shard_id, _NUM_SHARDS)
   return os.path.join(dataset_dir, output_filename)
 
 
-def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
-  """Converts the given filenames to a TFRecord dataset.
+def _convert_dataset(split_name, filename, dataset_dir):
+  """Converts the given filelist to a TFRecord dataset.
 
   Args:
     split_name: The name of the dataset, either 'train' or 'validation'.
-    filenames: A list of absolute paths to png or jpg images.
+    filelist: A list of absolute paths to png, the label, and the original label.
     class_names_to_ids: A dictionary from class names (strings) to ids
       (integers).
     dataset_dir: The directory where the converted datasets are stored.
   """
   assert split_name in ['train', 'validation']
 
-  num_per_shard = int(math.ceil(len(filenames) / float(_NUM_SHARDS)))
+  filelist = []
+  for line in open(filename):
+    filelist.append(line)
+  # Divide into train and test:
+  random.seed(_RANDOM_SEED)
+  random.shuffle(filelist)
+
+
+  num_per_shard = int(math.ceil(len(filelist) / float(_NUM_SHARDS)))
 
   with tf.Graph().as_default():
     image_reader = ImageReader()
@@ -120,27 +113,31 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
 
         with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
           start_ndx = shard_id * num_per_shard
-          end_ndx = min((shard_id+1) * num_per_shard, len(filenames))
+          end_ndx = min((shard_id+1) * num_per_shard, len(filelist))
           for i in range(start_ndx, end_ndx):
             sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
-                i+1, len(filenames), shard_id))
+                i+1, len(filelist), shard_id))
             sys.stdout.flush()
 
+            # Let's parse the filelist
+            fields = filelist[i].split(',')
+            filename = fields[0]
+            orig_label = int(fields[2])
+            label = int(fields[3])
+
             # Read the filename:
-            image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+            image_data = tf.gfile.FastGFile(filename, 'rb').read()
             height, width = image_reader.read_image_dims(sess, image_data)
 
-            class_name = os.path.basename(os.path.dirname(filenames[i]))
-            class_id = class_names_to_ids[class_name]
-
-            example = dataset_utils.image_to_tfexample(
-                image_data, b'png', height, width, class_id)
+            example = dataset_utils.image_and_labels_to_tfexample(
+                image_data, b'png', height, width, label, orig_label)
             tfrecord_writer.write(example.SerializeToString())
 
   sys.stdout.write('\n')
   sys.stdout.flush()
 
-def run(dataset_dir):
+
+def run(dataset_dir, train_file, val_file):
   """Runs the download and conversion operation.
 
   Args:
@@ -149,23 +146,23 @@ def run(dataset_dir):
   if not tf.gfile.Exists(dataset_dir):
     tf.gfile.MakeDirs(dataset_dir)
 
-  photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
-  class_names_to_ids = dict(zip(class_names, range(len(class_names))))
-
-  # Divide into train and test:
-  random.seed(_RANDOM_SEED)
-  random.shuffle(photo_filenames)
-  training_filenames = photo_filenames[_NUM_VALIDATION:]
-  validation_filenames = photo_filenames[:_NUM_VALIDATION]
 
   # First, convert the training and validation sets.
-  _convert_dataset('train', training_filenames, class_names_to_ids,
-                   dataset_dir)
-  _convert_dataset('validation', validation_filenames, class_names_to_ids,
-                   dataset_dir)
+  _convert_dataset('train', train_file, dataset_dir)
+  _convert_dataset('validation', val_file, dataset_dir)
 
   # Finally, write the labels file:
-  labels_to_class_names = dict(zip(range(len(class_names)), class_names))
+  labels_to_class_names = {0: 'background', 1: 'foreground'}
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
   print('\nFinished converting the cityscapes dataset!')
+
+
+def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+  
+  run(FLAGS.dataset_dir, FLAGS.train_file, FLAGS.val_file)
+
+if __name__ == '__main__':
+  tf.app.run()
