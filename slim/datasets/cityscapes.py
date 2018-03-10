@@ -33,7 +33,7 @@ _FILE_PATTERN = 'cityscapes_%s_*.tfrecord'
 
 SPLITS_TO_SIZES = {'train': 229534, 'validation': 5122}
 
-_NUM_CLASSES = 5
+_NUM_CLASSES = 2
 
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying size.',

@@ -588,10 +588,10 @@ def inception_v3_kmeans(inputs,
       # kmeans
       if kmeans_num_k > 0:
         with tf.name_scope('kmeans') as scope:
-          kmeans_weights = slim.variables.model_variable(
+          kmeans_weights = slim.model_variable(
               'kmeans_weights',
               shape=[2048, kmeans_num_k],
-              initializer=trunk_normal(0.01),
+              initializer=trunc_normal(0.01),
               trainable=is_training)
           # Note: if no binary_gt_labels are provided, we use the estimated
           # labels here.
@@ -608,7 +608,7 @@ def inception_v3_kmeans(inputs,
           end_points['KClusters'] = k_clusters
           end_points['KMinHSD'] = min_hsd
   return logits, end_points
-inception_v3.default_image_size = 299
+inception_v3_kmeans.default_image_size = 299
 
 
 def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):

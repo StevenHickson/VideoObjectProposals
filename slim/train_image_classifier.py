@@ -180,7 +180,7 @@ tf.app.flags.DEFINE_integer(
     'class for the ImageNet dataset.')
 
 tf.app.flags.DEFINE_string(
-    'model_name', 'inception_v3', 'The name of the architecture to train.')
+    'model_name', 'inception_v3_kmeans', 'The name of the architecture to train.')
 
 tf.app.flags.DEFINE_string(
     'preprocessing_name', None, 'The name of the preprocessing to use. If left '
@@ -217,7 +217,60 @@ tf.app.flags.DEFINE_boolean(
     'ignore_missing_vars', False,
     'When restoring a checkpoint would ignore missing variables.')
 
+#####################
+# kmeans Flags #
+#####################
+
+tf.app.flags.DEFINE_integer('kmeans', 0,
+                     'The number of k for kmeans (0 means dont use).')
+
+tf.app.flags.DEFINE_float('kmeans_loss_weight', 1.0,
+                   'The loss weight for the kmeans objective function.')
+
+tf.app.flags.DEFINE_float('kmeans_regularization', 0,
+                   """If true, uses l1 regularization on kmeans weights.""")
+
+tf.app.flags.DEFINE_float(
+    'stats_regularization_weight', 0,
+    """If true, uses stats regularization percentage/100 on kmeans weights.""")
+
+tf.app.flags.DEFINE_float(
+    'kmeans_loss_multiplier', 1.0,
+    'What to multiply the loss weights by after kmeans_multiplier_start is reached.'
+)
+
+tf.app.flags.DEFINE_integer('kmeans_multiplier_start', 0,
+                     'When to multiply the loss weights by.')
+
 FLAGS = tf.app.flags.FLAGS
+
+
+def cluster_stats_loss(k_clusters, multiplier=1.0):
+  """Calculates a loss based on different sizes of the clusters.
+
+  Args:
+    k_clusters: The k clustered results from the k-means objective function.
+    multiplier: The value to multiply the loss by.
+  """
+  if FLAGS.stats_regularization_weight != 0 and FLAGS.kmeans > 1:
+    # We should sum the different ks and make sure they are statiscal equally likely
+    cluster_count = []
+    cluster_diff = 0
+    for i in range(0, FLAGS.kmeans):
+      cluster_count.append(
+          tf.reduce_sum(
+              tf.cast(
+                  tf.equal(k_clusters, tf.constant(i, dtype=tf.int32)),
+                  tf.int32)))
+      if i > 0:
+        for j in range(1, i + 1):
+          cluster_diff += tf.constant(
+              FLAGS.stats_regularization_weight, tf.float32) * tf.cast(
+                  tf.abs(cluster_count[i] - cluster_count[i - j]),
+                  tf.float32) / tf.constant(FLAGS.batch_size, tf.float32)
+    cluster_diff *= multiplier
+    tf.summary.scalar('cluster_diff_loss', cluster_diff)
+    slim.losses.add_loss(cluster_diff)
 
 
 def _configure_learning_rate(num_samples_per_epoch, global_step):
@@ -431,30 +484,31 @@ def main(_):
           num_readers=FLAGS.num_readers,
           common_queue_capacity=20 * FLAGS.batch_size,
           common_queue_min=10 * FLAGS.batch_size)
-      [image, label] = provider.get(['image', 'label'])
+      [image, label, orig_label] = provider.get(['image', 'label', 'orig_label'])
       label -= FLAGS.labels_offset
 
       train_image_size = FLAGS.train_image_size or network_fn.default_image_size
 
       image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
-      images, labels = tf.train.batch(
-          [image, label],
+      images, labels, orig_labels = tf.train.batch(
+          [image, label, orig_label],
           batch_size=FLAGS.batch_size,
           num_threads=FLAGS.num_preprocessing_threads,
           capacity=5 * FLAGS.batch_size)
+      labels_normal = labels
       labels = slim.one_hot_encoding(
           labels, dataset.num_classes - FLAGS.labels_offset)
       batch_queue = slim.prefetch_queue.prefetch_queue(
-          [images, labels], capacity=2 * deploy_config.num_clones)
+          [images, labels, orig_labels], capacity=2 * deploy_config.num_clones)
 
     ####################
     # Define the model #
     ####################
     def clone_fn(batch_queue):
       """Allows data parallelism by creating multiple clones of network_fn."""
-      images, labels = batch_queue.dequeue()
-      logits, end_points = network_fn(images)
+      images, labels, orig_labels = batch_queue.dequeue()
+      logits, end_points = network_fn(images, kmeans_num_k=FLAGS.kmeans, binary_labels=labels_normal)
 
       #############################
       # Specify the loss function #
@@ -467,6 +521,25 @@ def main(_):
       slim.losses.softmax_cross_entropy(
           logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
+
+      if 'KClusters' in end_points:
+        with tf.name_scope('kmeans_losses'):
+          step_reached_multiplier = tf.cond(
+              global_step >= FLAGS.kmeans_multiplier_start,
+              lambda: tf.constant(FLAGS.kmeans_loss_multiplier),
+              lambda: tf.constant(1.0))
+
+          min_hsd = (FLAGS.kmeans_loss_weight * step_reached_multiplier
+                    ) * end_points['KMinHSD']
+          if FLAGS.kmeans_regularization != 0:
+            regularization_penalty = (
+                step_reached_multiplier * FLAGS.kmeans_regularization
+            ) * tf.nn.l2_loss(end_points['KMeansWeights'])
+            min_hsd += regularization_penalty
+          min_hsd *= FLAGS.kmeans_loss_weight
+          tf.summary.scalar('kmeans_loss', min_hsd)
+          slim.losses.add_loss(min_hsd)
+          cluster_stats_loss(end_points['KClusters'], step_reached_multiplier)
 
     # Gather initial summaries.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))

@@ -1,0 +1,2 @@
+python train_image_classifier.py --learning_rate=0.001 --dataset_name=cityscapes --dataset_dir=/data/tf/ --batch_size=64 --checkpoint_path=/data/models/inception_v3/inception_v3.ckpt --ignore_missing_vars=True --kmeans=3 --kmeans_regularization=1.0 --stats_regularization_weight=1.0 --kmeans_loss_weight=2.0 --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits
+
