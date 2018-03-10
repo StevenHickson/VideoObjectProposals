@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Provides data for the flowers dataset.
+"""Provides data for the cityscapes dataset.
 
 The dataset scripts used to create the dataset can be found at:
-tensorflow/models/research/slim/datasets/download_and_convert_flowers.py
+slim/datasets/convert_cityscapes.py
 """
 
 from __future__ import absolute_import
@@ -31,18 +31,19 @@ slim = tf.contrib.slim
 
 _FILE_PATTERN = 'cityscapes_%s_*.tfrecord'
 
-SPLITS_TO_SIZES = {'train': 3320, 'validation': 350}
+SPLITS_TO_SIZES = {'train': 229534, 'validation': 5122}
 
 _NUM_CLASSES = 5
 
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying size.',
-    'label': 'A single integer between 0 and 4',
+    'label': 'A single integer 0 or 1',
+    'orig_label': 'A single integer dictating orignal class',
 }
 
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
-  """Gets a dataset tuple with instructions for reading flowers.
+  """Gets a dataset tuple with instructions for reading cityscapes.
 
   Args:
     split_name: A train/validation split name.
@@ -74,11 +75,14 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
       'image/class/label': tf.FixedLenFeature(
           [], tf.int64, default_value=tf.zeros([], dtype=tf.int64)),
+      'image/class/orig_label': tf.FixedLenFeature(
+          [], tf.int64, default_value=tf.zeros([], dtype=tf.int64)),
   }
 
   items_to_handlers = {
       'image': slim.tfexample_decoder.Image(),
       'label': slim.tfexample_decoder.Tensor('image/class/label'),
+      'orig_label': slim.tfexample_decoder.Tensor('image/class/orig_label'),
   }
 
   decoder = slim.tfexample_decoder.TFExampleDecoder(
