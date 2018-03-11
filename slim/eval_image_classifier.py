@@ -79,6 +79,13 @@ tf.app.flags.DEFINE_float(
 tf.app.flags.DEFINE_integer(
     'eval_image_size', None, 'Eval image size')
 
+tf.app.flags.DEFINE_boolean(
+    'allow_gpu_growth', False,
+    'Whether to set the allow_growth flag to minimize gpu memory use.')
+
+tf.app.flags.DEFINE_integer('kmeans', 0,
+                     'The number of k for kmeans (0 means dont use).')
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -112,7 +119,7 @@ def main(_):
         shuffle=False,
         common_queue_capacity=2 * FLAGS.batch_size,
         common_queue_min=FLAGS.batch_size)
-    [image, label] = provider.get(['image', 'label'])
+    [image, label, orig_label] = provider.get(['image', 'label', 'orig_label'])
     label -= FLAGS.labels_offset
 
     #####################################
@@ -127,8 +134,8 @@ def main(_):
 
     image = image_preprocessing_fn(image, eval_image_size, eval_image_size)
 
-    images, labels = tf.train.batch(
-        [image, label],
+    images, labels, orig_labels = tf.train.batch(
+        [image, label, orig_labels],
         batch_size=FLAGS.batch_size,
         num_threads=FLAGS.num_preprocessing_threads,
         capacity=5 * FLAGS.batch_size)
@@ -136,7 +143,7 @@ def main(_):
     ####################
     # Define the model #
     ####################
-    logits, _ = network_fn(images)
+    logits, end_points = network_fn(images, kmeans_num_k=FLAGS.kmeans)
 
     if FLAGS.moving_average_decay:
       variable_averages = tf.train.ExponentialMovingAverage(
