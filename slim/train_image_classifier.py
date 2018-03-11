@@ -31,7 +31,7 @@ tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
 
 tf.app.flags.DEFINE_string(
-    'train_dir', '/tmp/tfmodel/',
+    'train_dir', '/tmp/tfmodel/train/',
     'Directory where checkpoints and event logs are written to.')
 
 tf.app.flags.DEFINE_integer('num_clones', 1,
@@ -512,7 +512,7 @@ def main(_):
     def clone_fn(batch_queue):
       """Allows data parallelism by creating multiple clones of network_fn."""
       images, labels, orig_labels = batch_queue.dequeue()
-      logits, end_points = network_fn(images, kmeans_num_k=FLAGS.kmeans)
+      logits, end_points = network_fn(images, kmeans_num_k=FLAGS.kmeans, binary_labels=labels_normal)
 
       #############################
       # Specify the loss function #

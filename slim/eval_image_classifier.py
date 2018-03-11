@@ -38,22 +38,22 @@ tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
 
 tf.app.flags.DEFINE_string(
-    'checkpoint_path', '/tmp/tfmodel/',
+    'checkpoint_path', '/tmp/tfmodel/train/',
     'The directory where the model was written to or an absolute path to a '
     'checkpoint file.')
 
 tf.app.flags.DEFINE_string(
-    'eval_dir', '/tmp/tfmodel/', 'Directory where the results are saved to.')
+    'eval_dir', '/tmp/tfmodel/eval/', 'Directory where the results are saved to.')
 
 tf.app.flags.DEFINE_integer(
     'num_preprocessing_threads', 4,
     'The number of threads used to create the batches.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_name', 'imagenet', 'The name of the dataset to load.')
+    'dataset_name', 'cityscapes', 'The name of the dataset to load.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_split_name', 'test', 'The name of the train/test split.')
+    'dataset_split_name', 'validation', 'The name of the train/test split.')
 
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
@@ -65,7 +65,7 @@ tf.app.flags.DEFINE_integer(
     'class for the ImageNet dataset.')
 
 tf.app.flags.DEFINE_string(
-    'model_name', 'inception_v3', 'The name of the architecture to evaluate.')
+    'model_name', 'inception_v3_kmeans', 'The name of the architecture to evaluate.')
 
 tf.app.flags.DEFINE_string(
     'preprocessing_name', None, 'The name of the preprocessing to use. If left '
@@ -135,7 +135,7 @@ def main(_):
     image = image_preprocessing_fn(image, eval_image_size, eval_image_size)
 
     images, labels, orig_labels = tf.train.batch(
-        [image, label, orig_labels],
+        [image, label, orig_label],
         batch_size=FLAGS.batch_size,
         num_threads=FLAGS.num_preprocessing_threads,
         capacity=5 * FLAGS.batch_size)
@@ -160,8 +160,6 @@ def main(_):
     # Define the metrics:
     names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
         'Accuracy': slim.metrics.streaming_accuracy(predictions, labels),
-        'Recall_5': slim.metrics.streaming_recall_at_k(
-            logits, labels, 5),
     })
 
     with tf.variable_scope('Accuracy'):
@@ -205,11 +203,11 @@ def main(_):
       # This ensures that we make a single pass over all of the data.
       num_batches = math.ceil(dataset.num_samples / float(FLAGS.batch_size))
 
-    if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
-      checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
-    else:
-      checkpoint_path = FLAGS.checkpoint_path
-
+    #if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
+    #  checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+    #else:
+    #  checkpoint_path = FLAGS.checkpoint_path
+    checkpoint_path = FLAGS.checkpoint_path
     tf.logging.info('Evaluating %s' % checkpoint_path)
 
     sess_config = tf.ConfigProto(allow_soft_placement=True)
@@ -217,9 +215,9 @@ def main(_):
     if FLAGS.allow_gpu_growth:
       sess_config.gpu_options.allow_growth = True
 
-    slim.evaluation.evaluate_once(
+    slim.evaluation.evaluation_loop(
         master=FLAGS.master,
-        checkpoint_path=checkpoint_path,
+        checkpoint_dir=checkpoint_path,
         logdir=FLAGS.eval_dir,
         num_evals=num_batches,
         eval_op=list(names_to_updates.values()),
