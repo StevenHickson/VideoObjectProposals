@@ -270,7 +270,7 @@ def cluster_stats_loss(k_clusters, multiplier=1.0):
                   tf.float32) / tf.constant(FLAGS.batch_size, tf.float32)
     cluster_diff *= multiplier
     tf.summary.scalar('cluster_diff_loss', cluster_diff)
-    slim.losses.add_loss(cluster_diff)
+    tf.losses.add_loss(cluster_diff)
 
 
 def _configure_learning_rate(num_samples_per_epoch, global_step):
@@ -520,7 +520,6 @@ def main(_):
             scope='aux_loss')
       slim.losses.softmax_cross_entropy(
           logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
-      return end_points
 
       if 'KClusters' in end_points:
         with tf.name_scope('kmeans_losses'):
@@ -538,8 +537,10 @@ def main(_):
             min_hsd += regularization_penalty
           min_hsd *= FLAGS.kmeans_loss_weight
           tf.summary.scalar('kmeans_loss', min_hsd)
-          slim.losses.add_loss(min_hsd)
+          tf.losses.add_loss(min_hsd)
           cluster_stats_loss(end_points['KClusters'], step_reached_multiplier)
+
+      return end_points
 
     # Gather initial summaries.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
