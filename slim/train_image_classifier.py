@@ -70,6 +70,10 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_integer(
     'task', 0, 'Task id of the replica running the training.')
 
+tf.app.flags.DEFINE_boolean(
+    'allow_gpu_growth', False,
+    'Whether to set the allow_growth flag to minimize gpu memory use.')
+
 ######################
 # Optimization Flags #
 ######################
@@ -625,6 +629,11 @@ def main(_):
 
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(summaries), name='summary_op')
+
+    sess_config = tf.ConfigProto(allow_soft_placement=True)
+    # Check whether to minimize GPU memory use with allow_growth
+    if FLAGS.allow_gpu_growth:
+      sess_config.gpu_options.allow_growth = True
 
 
     ###########################
