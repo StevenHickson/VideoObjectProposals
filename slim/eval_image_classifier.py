@@ -28,7 +28,7 @@ from preprocessing import preprocessing_factory
 slim = tf.contrib.slim
 
 tf.app.flags.DEFINE_integer(
-    'batch_size', 100, 'The number of samples in each batch.')
+    'batch_size', 32, 'The number of samples in each batch.')
 
 tf.app.flags.DEFINE_integer(
     'max_num_batches', None,
@@ -164,6 +164,33 @@ def main(_):
             logits, labels, 5),
     })
 
+    with tf.variable_scope('Accuracy'):
+      labels_when = tf.equal(labels, tf.constant(0, dtype=tf.int64))
+      ind = tf.where(labels_when)
+      new_pred = tf.gather(predictions, ind)
+      new_acc = tf.contrib.metrics.accuracy(tf.zeros_like(new_pred), new_pred)
+      tf.summary.scalar('acc_for_label_0', new_acc)
+      foreground_labels = [11, 21, 24, 25, 26, 27, 28, 31, 32, 33]
+      for f in foreground_labels:
+        labels_when = tf.equal(orig_labels, tf.constant(f, dtype=tf.int64))
+        ind = tf.where(labels_when)
+        new_pred = tf.gather(predictions, ind)
+        new_acc = tf.contrib.metrics.accuracy(new_pred, tf.ones_like(new_pred))
+        tf.summary.scalar('acc_for_label_' + str(f), new_acc)
+        # Let's put our Kmeans metrics here:
+        with tf.variable_scope('KmeansAccuracy'):
+          for i in range(0, FLAGS.kmeans):
+            kmeans_pred = tf.gather(end_points['KClusters'], ind)
+            if i == 0:
+              kmeans_acc = tf.contrib.metrics.accuracy(
+                  kmeans_pred, tf.zeros_like(kmeans_pred))
+            else:
+              kmeans_acc = tf.contrib.metrics.accuracy(
+                  kmeans_pred,
+                  tf.scalar_mul(tf.constant(i), tf.ones_like(kmeans_pred)))
+            tf.summary.scalar('k_' + str(i) + '_for_class_' + str(f),
+                              kmeans_acc)
+
     # Print the summaries to screen.
     for name, value in names_to_values.items():
       summary_name = 'eval/%s' % name
@@ -185,13 +212,19 @@ def main(_):
 
     tf.logging.info('Evaluating %s' % checkpoint_path)
 
+    sess_config = tf.ConfigProto(allow_soft_placement=True)
+    # Check whether to minimize GPU memory use with allow_growth
+    if FLAGS.allow_gpu_growth:
+      sess_config.gpu_options.allow_growth = True
+
     slim.evaluation.evaluate_once(
         master=FLAGS.master,
         checkpoint_path=checkpoint_path,
         logdir=FLAGS.eval_dir,
         num_evals=num_batches,
         eval_op=list(names_to_updates.values()),
-        variables_to_restore=variables_to_restore)
+        variables_to_restore=variables_to_restore,
+        session_config=sess_config)
 
 
 if __name__ == '__main__':
