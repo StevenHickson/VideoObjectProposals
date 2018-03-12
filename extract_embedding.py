@@ -2,6 +2,7 @@
 
 import numpy as np
 import tensorflow as tf
+import cv2
 
 # Args are: checkpoint path, text file, output file, and embedding layer name.
 # An exampleis python extract_embedding.py /data/model/inception/classify_image_graph_def.pb /data/proposals_train/info.txt /data/proposals/embeddings_baseline_train.npy extra_bottleneck_ops/Wx_plus_b/add:0
@@ -38,20 +39,13 @@ def create_graph(checkpoint):
         graph_def.ParseFromString(f.read())
         _ = tf.import_graph_def(graph_def, name='')
 
-def preprocess_img(input_image):
-    image = tf.image.decode_png(input_image, channels=3, name="png_reader")
-    if image.dtype != tf.float32:
-      image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-
-    image = tf.expand_dims(image, 0)
-    image = tf.image.resize_bilinear(image, [299, 299],
-                                       align_corners=False)
-    image = tf.squeeze(image, [0])
-    image = tf.subtract(image, 0.5)
-    image = tf.multiply(image, 2.0)
-    sess = tf.Session()
-    result = sess.run(image)
-    return result.reshape((1, 299, 299, 3))
+def preprocess_img(filename):
+    image = cv2.imread(filename)
+    resized = cv2.resize(image, (299, 299)).astype(np.float32)
+    resized /= 255
+    resized -= 0.5
+    resized *= 2
+    return resized.reshape((1, 299, 299, 3))
 
 def main(_):
     if not FLAGS.checkpoint:
@@ -88,11 +82,13 @@ def main(_):
         for line in open(FLAGS.filelist):
             fields = line.split(',')
             if int(fields[3]) == 1:
-                image_data = tf.gfile.FastGFile(fields[0], 'rb').read()
                 labels_list.append(int(fields[2]))
 
                 if FLAGS.preprocess_image:
-                    image_data = preprocess_img(image_data)
+                    image_data = preprocess_img(fields[0])
+                else:
+                    image_data = tf.gfile.FastGFile(fields[0], 'rb').read()
+
 
                 if count == 0 or FLAGS.batch_size == 1:
                     image_stack = image_data
@@ -105,6 +101,18 @@ def main(_):
                     embeddings = sess.run(embedding_tensor, {FLAGS.input_tensor: image_stack})
                     embedding_list.append(embeddings)
                 c += 1
+
+        # now we need to deal with the case if there are less than batch size images
+        if FLAGS.batch_size > 1 and count < FLAGS.batch_size:
+            # Pad the image_stack
+            num_pad = FLAGS.batch_size - count
+            zero_pad = np.zeros((num_pad, 299, 299, 3))
+            image_stack = np.vstack((image_stack, zero_pad))
+            embeddings = sess.run(embedding_tensor, {FLAGS.input_tensor: image_stack})
+            embedding_list.append(embeddings)
+            embedding_list = np.array(embedding_list)
+            embedding_list = embedding_list.reshape(c + num_pad, 2048)
+            embedding_list = embedding_list[0:c, :]
 
     labels_list = np.array(labels_list).reshape(c, 1)
     embedding_list = np.array(embedding_list)
