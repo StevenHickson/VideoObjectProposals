@@ -143,7 +143,7 @@ def main(_):
     ####################
     # Define the model #
     ####################
-    logits, end_points = network_fn(images, kmeans_num_k=FLAGS.kmeans)
+    logits, end_points = network_fn(images, kmeans_num_k=FLAGS.kmeans, binary_labels=labels)
 
     if FLAGS.moving_average_decay:
       variable_averages = tf.train.ExponentialMovingAverage(
