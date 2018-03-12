@@ -89,20 +89,21 @@ def main(_):
             fields = line.split(',')
             if int(fields[3]) == 1:
                 image_data = tf.gfile.FastGFile(fields[0], 'rb').read()
+                labels_list.append(int(fields[2]))
+
                 if FLAGS.preprocess_image:
                     image_data = preprocess_img(image_data)
-                labels_list.append(int(fields[2]))
-                if FLAGS.batch_size == 1:
+
+                if count == 0 or FLAGS.batch_size == 1:
                     image_stack = image_data
+                else:
+                    image_stack = np.vstack((image_stack, image_data))
+
+                count += 1
                 if count == FLAGS.batch_size or FLAGS.batch_size == 1:
                     count = 0
                     embeddings = sess.run(embedding_tensor, {FLAGS.input_tensor: image_stack})
                     embedding_list.append(embeddings)
-                elif count == 0:
-                    image_stack = image_data
-                else:
-                    image_stack = np.vstack((image_stack, image_data))
-                count += 1
                 c += 1
 
     labels_list = np.array(labels_list).reshape(c, 1)
