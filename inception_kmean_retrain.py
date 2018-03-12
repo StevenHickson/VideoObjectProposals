@@ -907,6 +907,9 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
 
   tf.summary.histogram('activations', final_tensor)
 
+  step = tf.train.get_or_create_global_step()
+  incr_step = step.assign(step + 1)
+  tf.summary.scalar('step', step)
   if FLAGS.kmeans > 0:
     with tf.name_scope('kmeans') as scope:
       initial_value = tf.truncated_normal(
@@ -916,10 +919,6 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
       min_hsd, k_clusters = mult_kmeans(bottleneck_input, kmeans_weights,
                                             ground_truth_input)
       with tf.name_scope('kmeans_losses'):
-        #step = slim.variables.get_or_create_global_step()
-        step = tf.train.get_or_create_global_step()
-        incr_step = step.assign(step + 1)
-        tf.summary.scalar('step', step)
         step_reached_multiplier = tf.cond(
           step >= FLAGS.kmeans_multiplier_start,
           lambda: tf.constant(FLAGS.kmeans_loss_multiplier),
