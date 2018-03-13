@@ -24,10 +24,13 @@ tf.app.flags.DEFINE_string(
     'output_tensor', 'extra_bottleneck_ops/Wx_plus_b/add:0', 'The output tensor name to use.')
 
 tf.app.flags.DEFINE_string(
-    'kmeans_tensor', 'InceptionV3/kmeans/Squeeze_2:0', 'The kmeans tensor name to use.')
+    'kmeans_tensor', '', 'The kmeans tensor name to use.')
 
 tf.app.flags.DEFINE_bool(
     'preprocess_image', False, 'Whether to decode and preprocess the image or not.')
+
+tf.app.flags.DEFINE_bool(
+    'print_nodes', False, 'Whether to print the node names.')
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 1, 'The batch size the network is supposed to use.')
@@ -77,11 +80,13 @@ def main(_):
         #   encoding of the image.
         # Runs the softmax tensor by feeding the image_data as input to the graph.
 
-        #tensor_names = [n.name for n in tf.get_default_graph().as_graph_def().node]
-        #print(tensor_names)
+        if FLAGS.print_nodes:
+            tensor_names = [n.name for n in tf.get_default_graph().as_graph_def().node]
+            print(tensor_names)
 
         embedding_tensor = sess.graph.get_tensor_by_name(FLAGS.output_tensor)
-        kmeans_tensor = sess.graph.get_tensor_by_name(FLAGS.kmeans_tensor)
+        if FLAGS.kmeans_tensor:
+            kmeans_tensor = sess.graph.get_tensor_by_name(FLAGS.kmeans_tensor)
 
         count = 0
         for line in open(FLAGS.filelist):
@@ -103,9 +108,12 @@ def main(_):
                 count += 1
                 if count == FLAGS.batch_size or FLAGS.batch_size == 1:
                     count = 0
-                    embeddings, k_out = sess.run([embedding_tensor, kmeans_tensor], {FLAGS.input_tensor: image_stack})
+                    if not FLAGS.kmeans_tensor:
+                        embeddings = sess.run([embedding_tensor], {FLAGS.input_tensor: image_stack})
+                    else:
+                        embeddings, k_out = sess.run([embedding_tensor, kmeans_tensor], {FLAGS.input_tensor: image_stack})
+                        kmeans_list.append(k_out)
                     embedding_list.append(embeddings)
-                    kmeans_list.append(k_out)
                 c += 1
 
         # now we need to deal with the case if there are less than batch size images
@@ -114,23 +122,30 @@ def main(_):
             num_pad = FLAGS.batch_size - count
             zero_pad = np.zeros((num_pad, 299, 299, 3))
             image_stack = np.vstack((image_stack, zero_pad))
-            embeddings, k_out = sess.run([embedding_tensor, kmeans_tensor], {FLAGS.input_tensor: image_stack})
+            if not FLAGS.kmeans_tensor:
+                embeddings = sess.run([embedding_tensor], {FLAGS.input_tensor: image_stack})
+            else:
+                embeddings, k_out = sess.run([embedding_tensor, kmeans_tensor], {FLAGS.input_tensor: image_stack})
+                kmeans_list.append(k_out)
+                kmeans_list = np.array(kmeans_list)
+                kmeans_list = kmeans_list.reshape(c + num_pad)
+                kmeans_list = kmeans_list[0:c]
             embedding_list.append(embeddings)
             embedding_list = np.array(embedding_list)
             embedding_list = embedding_list.reshape(c + num_pad, 2048)
             embedding_list = embedding_list[0:c, :]
-            kmeans_list.append(k_out)
-            kmeans_list = np.array(kmeans_list)
-            kmeans_list = kmeans_list.reshape(c + num_pad)
-            kmeans_list = kmeans_list[0:c]
 
     labels_list = np.array(labels_list).reshape(c, 1)
     embedding_list = np.array(embedding_list)
     embedding_list = embedding_list.reshape(c, 2048)
-    kmeans_list = np.array(kmeans_list)
-    kmeans_list = kmeans_list.reshape(c,1)
 
-    save_array = np.hstack((labels_list, kmeans_list, embedding_list))
+    if not FLAGS.kmeans_tensor:
+        save_array = np.hstack((labels_list, embedding_list))
+    else:
+        kmeans_list = np.array(kmeans_list)
+        kmeans_list = kmeans_list.reshape(c,1)
+        save_array = np.hstack((labels_list, kmeans_list, embedding_list))
+
     np.save(FLAGS.save_file, save_array)
 
 if __name__ == '__main__':
