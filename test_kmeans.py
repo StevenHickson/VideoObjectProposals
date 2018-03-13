@@ -83,7 +83,7 @@ def main(_):
         ks = train_set[:1:2]
         x = train_set[:,2:]
     else:
-        x = train_set[:,1]
+        x = train_set[:,1:]
 
     clusterer.fit(
           input_fn=_input_fn(x.astype(np.float32)), steps=10)
