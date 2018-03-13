@@ -190,7 +190,8 @@ def mult_kmeans(x, weights, mult):
       The loss from the kmeans objective function and the nearest k neighbors.
   """
   weights_trans = tf.transpose(weights)
-  x_squeezed = tf.squeeze(x)
+  #x_squeezed = tf.squeeze(x, axis=[1, 2, 3])
+  x_squeezed = x
   innerprod = tf.matmul(x_squeezed, weights_trans, transpose_b=True)
   weights_hsn = tf.reduce_sum(tf.pow(weights_trans, 2), 1) / 2.0
   x_hsn = tf.reduce_sum(tf.pow(x_squeezed, 2), 1) / 2.0
@@ -198,7 +199,7 @@ def mult_kmeans(x, weights, mult):
   max_hsd, nearest_k = tf.nn.top_k(hsd, 1)
   min_hsd = (x_hsn - tf.squeeze(max_hsd))
   return tf.reduce_mean(tf.multiply(min_hsd, tf.cast(
-      mult, tf.float32))), tf.squeeze(nearest_k, name=FLAGS.kmeans_tensor_name)
+      mult, tf.float32))), tf.squeeze(nearest_k, name='k_clusters')
 
 
 def create_image_lists(image_dir, testing_percentage, validation_percentage):
@@ -1442,7 +1443,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--kmeans_tensor_name',
       type=str,
-      default='kmeans/Squeeze_2',
+      default='kmeans/k_clusters',
       help="""\
       The name of the output kmeans layer in the retrained graph.\
       """
