@@ -198,7 +198,7 @@ def mult_kmeans(x, weights, mult):
   max_hsd, nearest_k = tf.nn.top_k(hsd, 1)
   min_hsd = (x_hsn - tf.squeeze(max_hsd))
   return tf.reduce_mean(tf.multiply(min_hsd, tf.cast(
-      mult, tf.float32))), tf.squeeze(nearest_k)
+      mult, tf.float32))), tf.squeeze(nearest_k, name=FLAGS.kmeans_tensor_name)
 
 
 def create_image_lists(image_dir, testing_percentage, validation_percentage):
@@ -976,7 +976,7 @@ def add_evaluation_step(result_tensor, ground_truth_tensor):
 
 def save_graph_to_file(sess, graph, graph_file_name):
   output_graph_def = graph_util.convert_variables_to_constants(
-      sess, graph.as_graph_def(), [FLAGS.final_tensor_name])
+      sess, graph.as_graph_def(), [FLAGS.final_tensor_name, FLAGS.kmeans_tensor_name])
 
   with gfile.FastGFile(graph_file_name, 'wb') as f:
     f.write(output_graph_def.SerializeToString())
@@ -1437,6 +1437,14 @@ if __name__ == '__main__':
       default='final_result',
       help="""\
       The name of the output classification layer in the retrained graph.\
+      """
+  )
+  parser.add_argument(
+      '--kmeans_tensor_name',
+      type=str,
+      default='kmeans/Squeeze_2',
+      help="""\
+      The name of the output kmeans layer in the retrained graph.\
       """
   )
   parser.add_argument(
