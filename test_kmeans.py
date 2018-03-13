@@ -7,6 +7,7 @@ from tensorflow.python.framework import constant_op
 import sys
 from city_scape_info import TrainIdToName
 from city_scape_info import OriginalIdToName
+from city_scape_info import ImportantLabelMapping
 from sklearn.metrics.cluster import normalized_mutual_info_score
 from sklearn.metrics.cluster import adjusted_mutual_info_score
 
@@ -64,11 +65,19 @@ def process_clusters(name, labels, predictions):
         else:
             print(TrainIdToName[k] + ': ' + str(v))
 
+    newLabels = []
+    newPreds = []
+    for l,p in zip(labels, predictions):
+        new_l = ImportantLabelMapping(l)
+        if new_l >= 0:
+            newLabels.append(new_l)
+            newPreds.append(p)
+
     print('\nNormalized Mutual Information Score')
-    print normalized_mutual_info_score(labels,predictions)
+    print normalized_mutual_info_score(newLabels,newPreds)
 
     print('\nAdjusted Mutual Information Score')
-    print adjusted_mutual_info_score(labels,predictions)
+    print adjusted_mutual_info_score(newLabels,newPreds)
 
 def main(_):
     train_set = np.load(FLAGS.train_file)

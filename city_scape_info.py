@@ -36,3 +36,24 @@ OriginalIdToName = { 0: 'unlabeled',
                      32: 'motorcycle',
                      33: 'bicycle' }
 
+def ImportantLabelMapping(value):
+    if value == 11:
+        return 11
+    elif value == 21:
+        return 21
+    elif value == 24:
+        return 24
+    elif value == 25:
+        return 24
+    elif value == 26:
+        return 26
+    elif value == 27:
+        return 26
+    elif value == 28:
+        return 26
+    elif value == 29:
+        return 26
+    elif value == 33:
+        return 33
+    else:
+        return -1
