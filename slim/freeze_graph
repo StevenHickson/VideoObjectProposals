@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=1 python ~/git/tensorflow/tensorflow/python/tools/freeze_graph.py --input_graph=graph.pbtxt --input_checkpoint=model.ckpt-92575 --output_graph=output.pb --output_node_names=InceptionV3/Predictions/Reshape,InceptionV3/kmeans/Squeeze
