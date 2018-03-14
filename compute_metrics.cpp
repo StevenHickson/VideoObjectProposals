@@ -99,6 +99,7 @@ int main(int argc, char* argv[]) {
     string inst_name, gt_name, label_name;
     cv::Mat inst, gt, label;
     inst_name = regex_replace(line, regex("png"), "inst.png");
+    //inst_name = regex_replace(line, regex("val"), "val_maskrcnn");
     inst = imread(inst_name, CV_LOAD_IMAGE_GRAYSCALE);
     //cout << "inst type: " << type2str(inst.type());
     if (inst.empty()) {
@@ -124,8 +125,8 @@ int main(int argc, char* argv[]) {
     
     //Let's calculate the intersection and union for each segment
     CalcIoU(inst, gt, label, FLAGS_iou_thresh, &positiveCountForLabel, &totalCountForLabel);
-
   }
+
   // Let's print out the results
   for(int i = 0; i < 256; i++) {
     int pC = positiveCountForLabel[i];
