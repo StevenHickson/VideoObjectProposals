@@ -118,15 +118,15 @@ def process_clusters(name, labels, predictions):
     print('\nAdjusted Mutual Information Score')
     print adjusted_mutual_info_score(newLabels,newPreds)
 
-    print('\nPurity Score')
+    print('\nPurity Score (car,person,bicycle)')
     score = purity_score(purity_labels,purity_preds)
     print score
 
-    print('\nPurity Score2')
+    print('\nPurity Score2 (car,person,building')
     score = purity_score(purity_labels2,purity_preds2)
     print score
 
-    print('\nPurity Score3')
+    print('\nPurity Score3 (car,person,vegetation)')
     score = purity_score(purity_labels3,purity_preds3)
     print score
 
