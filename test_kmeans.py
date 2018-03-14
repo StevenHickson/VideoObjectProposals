@@ -8,8 +8,13 @@ import sys
 from city_scape_info import TrainIdToName
 from city_scape_info import OriginalIdToName
 from city_scape_info import ImportantLabelMapping
+from city_scape_info import PurityLabelMapping
+from city_scape_info import PurityLabelMapping2
+from city_scape_info import PurityLabelMapping3
 from sklearn.metrics.cluster import normalized_mutual_info_score
 from sklearn.metrics.cluster import adjusted_mutual_info_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
 
 # Input is the train set, the validation set, # of clusters
 # An example is python test_kmeans.py /data/gt_proposals/embeddings_baseline_train.npy /data/gt_proposals/embeddings_baseline.npy
@@ -45,12 +50,28 @@ def _input_fn(tensor, num_epochs=None):
           None)
     return _constant_input_fn
 
+
+def purity_score(classes, clusters):
+    clusters = np.array(clusters)
+    classes = np.array(classes)
+    A = np.c_[(clusters,classes)]
+
+    n_accurate = 0.
+
+    for j in np.unique(A[:,0]):
+        z = A[A[:,0] == j, 1]
+        x = np.argmax(np.bincount(z))
+        n_accurate += len(z[z == x])
+
+    return n_accurate / A.shape[0]
+
+
 def process_clusters(name, labels, predictions):
     cluster_counts = dict()
     for l,p in zip(labels,predictions):
         if l not in cluster_counts:
-            cluster_counts[l] = [0] * FLAGS.num_k
-        cluster_counts[l][p] += 1
+            cluster_counts[int(l)] = [0] * FLAGS.num_k
+        cluster_counts[int(l)][p] += 1
 
     minVal = min(cluster_counts)
     maxVal = max(cluster_counts)
@@ -67,17 +88,48 @@ def process_clusters(name, labels, predictions):
 
     newLabels = []
     newPreds = []
+    purity_labels = []
+    purity_preds = []
+    purity_labels2 = []
+    purity_preds2 = []
+    purity_labels3 = []
+    purity_preds3 = []
     for l,p in zip(labels, predictions):
         new_l = ImportantLabelMapping(l)
         if new_l >= 0:
             newLabels.append(new_l)
             newPreds.append(p)
+        new_l = PurityLabelMapping(l)
+        if new_l >= 0:
+            purity_labels.append(new_l)
+            purity_preds.append(p)
+        new_l = PurityLabelMapping2(l)
+        if new_l >= 0:
+            purity_labels2.append(new_l)
+            purity_preds2.append(p)
+        new_l = PurityLabelMapping3(l)
+        if new_l >= 0:
+            purity_labels3.append(new_l)
+            purity_preds3.append(p)
 
     print('\nNormalized Mutual Information Score')
     print normalized_mutual_info_score(newLabels,newPreds)
 
     print('\nAdjusted Mutual Information Score')
     print adjusted_mutual_info_score(newLabels,newPreds)
+
+    print('\nPurity Score')
+    score = purity_score(purity_labels,purity_preds)
+    print score
+
+    print('\nPurity Score2')
+    score = purity_score(purity_labels2,purity_preds2)
+    print score
+
+    print('\nPurity Score3')
+    score = purity_score(purity_labels3,purity_preds3)
+    print score
+
 
 def main(_):
     train_set = np.load(FLAGS.train_file)

@@ -57,3 +57,65 @@ def ImportantLabelMapping(value):
         return 33
     else:
         return -1
+
+def PurityLabelMapping(value):
+    #if value == 11:
+    #    return 11
+    #elif value == 21:
+    #    return 21
+    if value == 24:
+        return 24
+    elif value == 25:
+        return 24
+    elif value == 26:
+        return 26
+    elif value == 27:
+        return 26
+    elif value == 28:
+        return 26
+    elif value == 29:
+        return 26
+    elif value == 33:
+        return 33
+    else:
+        return -1
+
+def PurityLabelMapping2(value):
+    if value == 11:
+        return 11
+    #elif value == 21:
+    #    return 21
+    elif value == 24:
+        return 24
+    elif value == 25:
+        return 24
+    elif value == 26:
+        return 26
+    elif value == 27:
+        return 26
+    elif value == 28:
+        return 26
+    elif value == 29:
+        return 26
+    else:
+        return -1
+
+def PurityLabelMapping3(value):
+    #if value == 11:
+    #    return 11
+    if value == 21:
+        return 21
+    elif value == 24:
+        return 24
+    elif value == 25:
+        return 24
+    elif value == 26:
+        return 26
+    elif value == 27:
+        return 26
+    elif value == 28:
+        return 26
+    elif value == 29:
+        return 26
+    else:
+        return -1
