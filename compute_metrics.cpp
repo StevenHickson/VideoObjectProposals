@@ -21,6 +21,10 @@ DEFINE_string(file_list, "", "The list of files to parse.");
 
 DEFINE_double(iou_thresh, 0.5, "The iou_thresh.");
 
+DEFINE_string(regex_match, "val", "The regex to replace in the val filename")
+
+DEFINE_string(regex_replace, "val_unsup3", "The regex to replace in the val filename")
+
 using namespace cv;
 using namespace std;
 
@@ -98,8 +102,8 @@ int main(int argc, char* argv[]) {
   while(getline(in, line)) {
     string inst_name, gt_name, label_name;
     cv::Mat inst, gt, label;
-    inst_name = regex_replace(line, regex("png"), "inst.png");
-    //inst_name = regex_replace(line, regex("val"), "val_maskrcnn");
+    //inst_name = regex_replace(line, regex("png"), "inst.png");
+    inst_name = regex_replace(line, regex(FLAGS_regex_match), FLAGS_regex_replace);
     inst = imread(inst_name, CV_LOAD_IMAGE_GRAYSCALE);
     //cout << "inst type: " << type2str(inst.type());
     if (inst.empty()) {
